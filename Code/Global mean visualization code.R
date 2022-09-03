@@ -111,10 +111,10 @@ t_diff %>%
 
 t_diff <- read.csv("data/GLB.Ts+dSST.csv",skip = 1, na="***") %>% 
   select(year = Year, month.abb) %>% 
-  pivot_longer(-year, names_to = "month", values_to = "t_diff") %>% 
+  pivot_longer(-year, names_to = "month", values_to = "t_diff") %>% # According to the year, rename to month, and distribute values from this dataset
   na.exclude() %>% 
-  mutate(month = factor(month, levels = month.abb), 
-         this_year = year == 2022) #to organize January to December in the plotz
+  mutate(month = factor(month, levels = month.abb), # Setting factor levels to constant values from month.abb
+         this_year = year == 2022) #to organize January to December in the plot
 
 next_Jan <- t_diff %>% 
   filter(month == "Jan") %>% 
@@ -125,9 +125,10 @@ last_Dec <- t_diff %>%
   mutate(year = year + 1, month ="last_Dec")
 
 t_diff <- bind_rows(last_Dec, t_diff, next_Jan) %>% 
-  mutate(month = factor(month, levels = c( month.abb, "next_Jan")),
-         month_number = as.numeric(month) - 1, 
-         this_year = year == 2022) 
+  mutate(month = factor(month, levels = c( month.abb, "next_Jan")), # Setting factor levels to constant values from month.abb INCLUDING "next_Jan"
+         month_number = as.numeric(month) - 1,
+         this_year = year == 2022
+         ) 
 
 annotation <- t_diff %>% 
   slice_max(year) %>% 
@@ -139,6 +140,12 @@ temp_line <- tibble(
   labels = c("1.5\u00B0C", "2\u00B0C")
 )
 
+month_labels <- tibble(
+    x = 1:12, 
+    labels = month.abb, 
+    y = 2.4
+  )
+
 t_diff %>% 
   ggplot(aes(month_number, t_diff, group=year, color=year, size = this_year)) + # added size to track "this_year" changes fron annotation
   geom_hline(yintercept = c(1.5, 2.0), color = "red", size = 0.7) + # adding red horizontal line indicating zero
@@ -146,9 +153,16 @@ t_diff %>%
              color = "red", fill = "black", label.size = 0,
              inherit.aes = FALSE) +
   geom_line() + 
-  geom_text(data=annotation, aes(x=month_number, y=t_diff, label=year, color=year), 
-            inherit.aes=FALSE,
-            hjust=0, size=5) + 
+  geom_text(data = month_labels, aes(x=x, y=y,label=labels), 
+            color = "white",
+            angle = seq(360 - 360/12, 0, length.out = 12), 
+            inherit.aes = FALSE) + #in order to tangential month labels
+  # geom_text(data=annotation, aes(x=month_number, y=t_diff, label=year, color=year), 
+  #           inherit.aes=FALSE,
+  #           hjust=0, size=5) + 
+  geom_point(data = annotation, 
+             aes(x=month_number, y=t_diff, color = year), 
+             size = 3) +  # To  add point at present time
   scale_x_continuous(breaks=1:12, 
                      labels = month.abb) + # To label month number by month name
   coord_polar() + 
@@ -156,7 +170,8 @@ t_diff %>%
                         guide = "none") + 
   scale_size_manual(breaks=c(FALSE,TRUE), 
                     values=c(0.25,1), 
-                    guide="none") + # adjust the values of the color bar
+                    guide="none"
+                    ) + # adjust the values of the color bar
   labs(x = "By Month", 
        y = "Temperature change since Pre-Industrial Time \u00B0C", 
        title = "Global Temperature Change since 1880") + 
@@ -166,5 +181,5 @@ t_diff %>%
         plot.background = element_rect(fill="#444444"), 
         axis.text = element_text(color="White"),
         axis.text.y = element_blank(), 
-        axis.title.x = element_text(colour = "white"),
+        axis.text.x = element_blank(),
         axis.title.y = element_text(colour = "white"))
